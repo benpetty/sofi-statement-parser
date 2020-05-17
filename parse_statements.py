@@ -10,8 +10,11 @@ from datetime import datetime
 
 from tika import unpack
 
-TRANSACTION_ID = 'Transaction ID: '
 
+STATEMENTS_FOLDER = os.environ.get("STATEMENTS_FOLDER", "Statements")
+TRANSACTIONS_FOLDER = os.environ.get("TRANSACTIONS_FOLDER", "Transactions")
+
+TRANSACTION_ID = 'Transaction ID: '
 
 output_dirs = None
 keywords = [
@@ -31,10 +34,10 @@ keywords = [
 ]
 
 
-for root, dirs, files in os.walk("Statements"):
+for root, dirs, files in os.walk(STATEMENTS_FOLDER):
 
     if not output_dirs:
-        output_dirs = sorted([f"Transactions/{d}" for d in dirs])
+        output_dirs = sorted([f"{TRANSACTIONS_FOLDER}/{d}" for d in dirs])
         # Make transaction dirs if they don't exist
         for transaction_dir in output_dirs:
             if not os.path.isdir(transaction_dir):
@@ -80,8 +83,11 @@ for root, dirs, files in os.walk("Statements"):
                         except StopIteration:
                             pass
 
-                output_filename = os.path.splitext(path)[0]
-                print(f'\n{output_filename}.csv'.replace(root, 'Transactions'))
-                for tup in data:
-                    if tup[1]:
-                        print(tup[1])
+                output_filename = os.path.splitext(path)[0].replace(STATEMENTS_FOLDER, TRANSACTIONS_FOLDER) + '.csv'
+                csv_text = '\n'.join([tup[1] for tup in data])
+
+                if csv_text:
+
+                    print(csv_text, file=open(output_filename, "w"))
+                    print(f"\n{output_filename}:")
+                    print(csv_text)
