@@ -49,24 +49,26 @@ for root, dirs, files in os.walk(STATEMENTS_FOLDER):
             if os.path.splitext(path)[1] == '.pdf':
 
                 contents = unpack.from_file(path).get("content", "")
-                split = re.split(f"({'|'.join(keywords)})", contents)
-
+                iterator = iter(re.split(f"({'|'.join(keywords)})", contents))
                 data = []
-
-                iterator = iter(split)
 
                 for key in iterator:
                     if key in keywords:
+
                         try:
+
                             value = next(iterator)
                             if key == TRANSACTION_ID:
                                 value = [val for val in value.split("\n")[:6] if val]
+
                                 transaction_id = value[0]
                                 amount = value[1].replace("$", "").split()[0]
                                 balance = value[1].replace("$", "").split()[1]
                                 date = ''.join(re.split(r'(\d{4})', value[2])[:2])
+
                                 try:
-                                    date = datetime.strftime(datetime.strptime(date, '%b %d, %Y'), '%m/%d/%Y')
+                                    date = datetime.strptime(date, '%b %d, %Y') # convert to datetime object
+                                    date = datetime.strftime(date, '%m/%d/%Y') # convert back to strin in different format
                                     description = ''.join(re.split(r'(\d{4})', value[2])[2:]).strip()
                                 except ValueError:
                                     description = date
@@ -79,7 +81,9 @@ for root, dirs, files in os.walk(STATEMENTS_FOLDER):
                                     date,
                                     description,
                                 ])
+
                                 data.append((key, value))
+
                         except StopIteration:
                             pass
 
