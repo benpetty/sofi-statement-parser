@@ -7,7 +7,6 @@ parse their PDF statements
 import re
 import os
 import csv
-import json
 from datetime import datetime
 
 from tika import unpack
@@ -19,6 +18,9 @@ TRANSACTIONS_FOLDER = os.environ.get("TRANSACTIONS_FOLDER", "Transactions")
 TRANSACTIONS_HEADER = "DATE TYPE DESCRIPTION AMOUNT BALANCE"
 
 output_dirs = None
+
+# Potentially could get any of this data and more from the PDF
+# but I just want the transactions
 keywords = [
     "Primary Account Holder",
     "Member since",
@@ -41,8 +43,10 @@ keywords = [
 for root, dirs, files in os.walk(STATEMENTS_FOLDER):
 
     if not output_dirs:
-        output_dirs = sorted([f"{TRANSACTIONS_FOLDER}/{d}" for d in dirs])
+
         # Make transaction dirs if they don't exist
+        # * I have my statements saved in sub dirs by year so this creates those
+        output_dirs = sorted([f"{TRANSACTIONS_FOLDER}/{d}" for d in dirs])
         for transaction_dir in output_dirs:
             if not os.path.isdir(transaction_dir):
                 os.makedirs(transaction_dir)
@@ -61,31 +65,36 @@ for root, dirs, files in os.walk(STATEMENTS_FOLDER):
                             value = next(iterator)
 
                             if key == TRANSACTIONS_HEADER:
+
+                                # Split by the date format: "Jan 1, 1970"
                                 split = re.split(
                                     r"(\w{3} \d{1,2}, 20\d{2})|\n\n", value,
                                 )
+
+                                # Clean up whitespace and empty strings in list
                                 data = [
                                     val.replace("\n", " ").strip()
                                     for val in split
                                     if val
                                 ]
+
+                                # Convert stream of parsed data to 3 column rows
                                 data = [
-                                    list(tup) for tup in zip(*[iter(data)] * 3) if tup
+                                    list(entry)
+                                    for entry in zip(*[iter(data)] * 3)
+                                    if entry
                                 ]
 
                                 for row in data:
 
                                     # Convert date format
-                                    try:
-                                        date = datetime.strptime(row[0], "%b %d, %Y")
-                                        row[0] = datetime.strftime(date, "%d/%m/%Y")
-                                    except ValueError:
-                                        del row
+                                    date = datetime.strptime(row[0], "%b %d, %Y")
+                                    row[0] = datetime.strftime(date, "%d/%m/%Y")
 
                                     # Cleanup description
                                     row[1] = " ".join(row[1].split())
 
-                                    # split amount / balance
+                                    # split amount / balance and cleanup
                                     amount, balance = row[2].split()
                                     row[2] = float(
                                         amount.replace("$", "").replace(",", "")
@@ -104,10 +113,11 @@ for root, dirs, files in os.walk(STATEMENTS_FOLDER):
                     + ".csv"
                 )
 
+                # Write and read the files
                 if data:
                     with open(output_filename, "w") as csv_file:
                         writer = csv.writer(csv_file)
                         writer.writerows(data)
-
-                    print("\n", output_filename)
-                    print(json.dumps(data, indent=2))
+                    with open(output_filename, "r") as csv_file:
+                        print(output_filename)
+                        print(csv_file.read())
