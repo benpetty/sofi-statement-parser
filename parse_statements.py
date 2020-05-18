@@ -67,6 +67,7 @@ for root, dirs, files in os.walk(STATEMENTS_FOLDER):
                             if key == TRANSACTIONS_HEADER:
 
                                 # Split by the date format: "Jan 1, 1970"
+                                # or 2 new lines
                                 split = re.split(
                                     r"(\w{3} \d{1,2}, 20\d{2})|\n\n", value,
                                 )
