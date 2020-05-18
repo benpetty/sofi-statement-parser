@@ -7,6 +7,7 @@ parse their PDF statements
 import re
 import os
 import csv
+import json
 from datetime import datetime
 
 from tika import unpack
@@ -15,7 +16,7 @@ from tika import unpack
 STATEMENTS_FOLDER = os.environ.get("STATEMENTS_FOLDER", "Statements")
 TRANSACTIONS_FOLDER = os.environ.get("TRANSACTIONS_FOLDER", "Transactions")
 
-TRANSACTION_ID = "Transaction ID: "
+TRANSACTIONS_HEADER = "DATE TYPE DESCRIPTION AMOUNT BALANCE"
 
 output_dirs = None
 keywords = [
@@ -31,7 +32,9 @@ keywords = [
     "APY Earned This Period",
     "Year-to-date Interest Paid",
     "Transaction Details",
-    TRANSACTION_ID,
+    TRANSACTIONS_HEADER,
+    "Contact Information",
+    "Sweep Program Details",
 ]
 
 
@@ -50,40 +53,46 @@ for root, dirs, files in os.walk(STATEMENTS_FOLDER):
             if os.path.splitext(path)[1] == ".pdf":
                 contents = unpack.from_file(path).get("content", "")
                 iterator = iter(re.split(f"({'|'.join(keywords)})", contents))
-                data = []
 
                 for key in iterator:
                     if key in keywords:
 
                         try:
                             value = next(iterator)
-                            if key == TRANSACTION_ID:
-                                value = [val for val in value.split("\n")[:6] if val]
 
-                                transaction_id = value[0]
-                                amount = value[1].split()[0].replace("$", "")
-                                balance = value[1].split()[1].replace("$", "")
-                                date = "".join(re.split(r"(\d{4})", value[2])[:2])
-
-                                try:
-                                    date = datetime.strptime(date, "%b %d, %Y")
-                                    date = datetime.strftime(date, "%d/%m/%Y")
-                                    description = "".join(
-                                        re.split(r"(\d{4})", value[2])[2:]
-                                    ).strip()
-                                except ValueError:
-                                    description = date
-                                    date = "null"
-
-                                values = [
-                                    transaction_id,
-                                    amount,
-                                    balance,
-                                    date,
-                                    description,
+                            if key == TRANSACTIONS_HEADER:
+                                split = re.split(
+                                    r"(\w{3} \d{1,2}, 20\d{2})|\n\n", value,
+                                )
+                                data = [
+                                    val.replace("\n", " ").strip()
+                                    for val in split
+                                    if val
+                                ]
+                                data = [
+                                    list(tup) for tup in zip(*[iter(data)] * 3) if tup
                                 ]
 
-                                data.append(values)
+                                for row in data:
+
+                                    # Convert date format
+                                    try:
+                                        date = datetime.strptime(row[0], "%b %d, %Y")
+                                        row[0] = datetime.strftime(date, "%d/%m/%Y")
+                                    except ValueError:
+                                        del row
+
+                                    # Cleanup description
+                                    row[1] = " ".join(row[1].split())
+
+                                    # split amount / balance
+                                    amount, balance = row[2].split()
+                                    row[2] = float(
+                                        amount.replace("$", "").replace(",", "")
+                                    )
+                                    row.append(
+                                        float(balance.replace("$", "").replace(",", ""))
+                                    )
 
                         except StopIteration:
                             pass
@@ -100,4 +109,5 @@ for root, dirs, files in os.walk(STATEMENTS_FOLDER):
                         writer = csv.writer(csv_file)
                         writer.writerows(data)
 
-                    print(output_filename)
+                    print("\n", output_filename)
+                    print(json.dumps(data, indent=2))

@@ -139,9 +139,7 @@ cython_debug/
 
 
 
-Statements/**/*
-Transactions/**/*
-!Statements/.gitkeep
-!Transactions/.gitkeep
+Statements
+Transactions
 
 .vscode
