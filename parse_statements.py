@@ -6,6 +6,7 @@ parse their PDF statements
 
 import re
 import os
+import csv
 from datetime import datetime
 
 from tika import unpack
@@ -14,22 +15,22 @@ from tika import unpack
 STATEMENTS_FOLDER = os.environ.get("STATEMENTS_FOLDER", "Statements")
 TRANSACTIONS_FOLDER = os.environ.get("TRANSACTIONS_FOLDER", "Transactions")
 
-TRANSACTION_ID = 'Transaction ID: '
+TRANSACTION_ID = "Transaction ID: "
 
 output_dirs = None
 keywords = [
-    'Primary Account Holder',
-    'Member since',
-    'Account Number',
-    'Monthly Statement Period',
-    'Current Balance',
-    'Current Interest Rate',
-    'Interest Rate Earned This Period',
-    'Monthly Interest Paid',
-    'Beginning Balance',
-    'APY Earned This Period',
-    'Year-to-date Interest Paid',
-    'Transaction Details',
+    "Primary Account Holder",
+    "Member since",
+    "Account Number",
+    "Monthly Statement Period",
+    "Current Balance",
+    "Current Interest Rate",
+    "Interest Rate Earned This Period",
+    "Monthly Interest Paid",
+    "Beginning Balance",
+    "APY Earned This Period",
+    "Year-to-date Interest Paid",
+    "Transaction Details",
     TRANSACTION_ID,
 ]
 
@@ -46,8 +47,7 @@ for root, dirs, files in os.walk(STATEMENTS_FOLDER):
     if files:
         for filename in files:
             path = f"{root}/{filename}"
-            if os.path.splitext(path)[1] == '.pdf':
-
+            if os.path.splitext(path)[1] == ".pdf":
                 contents = unpack.from_file(path).get("content", "")
                 iterator = iter(re.split(f"({'|'.join(keywords)})", contents))
                 data = []
@@ -56,42 +56,48 @@ for root, dirs, files in os.walk(STATEMENTS_FOLDER):
                     if key in keywords:
 
                         try:
-
                             value = next(iterator)
                             if key == TRANSACTION_ID:
                                 value = [val for val in value.split("\n")[:6] if val]
 
                                 transaction_id = value[0]
-                                amount = value[1].replace("$", "").split()[0]
-                                balance = value[1].replace("$", "").split()[1]
-                                date = ''.join(re.split(r'(\d{4})', value[2])[:2])
+                                amount = value[1].split()[0].replace("$", "")
+                                balance = value[1].split()[1].replace("$", "")
+                                date = "".join(re.split(r"(\d{4})", value[2])[:2])
 
                                 try:
-                                    date = datetime.strptime(date, '%b %d, %Y') # convert to datetime object
-                                    date = datetime.strftime(date, '%m/%d/%Y') # convert back to strin in different format
-                                    description = ''.join(re.split(r'(\d{4})', value[2])[2:]).strip()
+                                    date = datetime.strptime(date, "%b %d, %Y")
+                                    date = datetime.strftime(date, "%d/%m/%Y")
+                                    description = "".join(
+                                        re.split(r"(\d{4})", value[2])[2:]
+                                    ).strip()
                                 except ValueError:
                                     description = date
-                                    date = 'null'
+                                    date = "null"
 
-                                value = ','.join([
+                                values = [
                                     transaction_id,
                                     amount,
                                     balance,
                                     date,
                                     description,
-                                ])
+                                ]
 
-                                data.append((key, value))
+                                data.append(values)
 
                         except StopIteration:
                             pass
 
-                output_filename = os.path.splitext(path)[0].replace(STATEMENTS_FOLDER, TRANSACTIONS_FOLDER) + '.csv'
-                csv_text = '\n'.join([tup[1] for tup in data])
+                output_filename = (
+                    os.path.splitext(path)[0].replace(
+                        STATEMENTS_FOLDER, TRANSACTIONS_FOLDER
+                    )
+                    + ".csv"
+                )
 
-                if csv_text:
+                if data:
+                    with open(output_filename, "w") as csv_file:
+                        writer = csv.writer(csv_file)
+                        writer.writerows(data)
 
-                    print(csv_text, file=open(output_filename, "w"))
-                    print(f"\n{output_filename}:")
-                    print(csv_text)
+                    print(output_filename)
