@@ -58,6 +58,8 @@ for root, dirs, files in os.walk(STATEMENTS_FOLDER):
                 contents = unpack.from_file(path).get("content", "")
                 iterator = iter(re.split(f"({'|'.join(keywords)})", contents))
 
+                file_data = []
+
                 for key in iterator:
                     if key in keywords:
 
@@ -73,20 +75,20 @@ for root, dirs, files in os.walk(STATEMENTS_FOLDER):
                                 )
 
                                 # Clean up whitespace and empty strings in list
-                                data = [
+                                page_data = [
                                     val.replace("\n", " ").strip()
                                     for val in split
                                     if val
                                 ]
 
                                 # Convert stream of parsed data to 3 column rows
-                                data = [
+                                page_data = [
                                     list(entry)
-                                    for entry in zip(*[iter(data)] * 3)
+                                    for entry in zip(*[iter(page_data)] * 3)
                                     if entry
                                 ]
 
-                                for row in data:
+                                for row in page_data:
 
                                     # Convert date format
                                     date = datetime.strptime(row[0], "%b %d, %Y")
@@ -103,6 +105,7 @@ for root, dirs, files in os.walk(STATEMENTS_FOLDER):
                                     row.append(
                                         float(balance.replace("$", "").replace(",", ""))
                                     )
+                                    file_data.append(row)
 
                         except StopIteration:
                             pass
@@ -115,10 +118,10 @@ for root, dirs, files in os.walk(STATEMENTS_FOLDER):
                 )
 
                 # Write and read the files
-                if data:
+                if file_data:
                     with open(output_filename, "w") as csv_file:
                         writer = csv.writer(csv_file)
-                        writer.writerows(data)
+                        writer.writerows(file_data)
                     with open(output_filename, "r") as csv_file:
                         print(output_filename)
                         print(csv_file.read())
