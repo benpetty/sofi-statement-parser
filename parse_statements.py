@@ -92,7 +92,7 @@ for root, dirs, files in os.walk(STATEMENTS_FOLDER):
 
                                     # Convert date format
                                     date = datetime.strptime(row[0], "%b %d, %Y")
-                                    row[0] = datetime.strftime(date, "%d/%m/%Y")
+                                    row[0] = datetime.strftime(date, "%Y/%m/%d")
 
                                     # Cleanup description
                                     row[1] = " ".join(row[1].split())
