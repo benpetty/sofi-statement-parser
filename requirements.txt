@@ -1,7 +1,7 @@
--i https://pypi.org/simple
-certifi==2020.4.5.1
-chardet==3.0.4
-idna==2.9
-requests==2.23.0
+-i https://pypi.org/simple/
+certifi==2021.5.30
+chardet==4.0.0
+idna==2.10
+requests==2.25.1
 tika==1.24
-urllib3==1.25.9
+urllib3==1.26.5
