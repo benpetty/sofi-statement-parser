@@ -54,6 +54,7 @@ for root, dirs, files in os.walk(STATEMENTS_FOLDER):
     if files:
         for filename in files:
             path = f"{root}/{filename}"
+            print("reading file at " + path)
             if os.path.splitext(path)[1] == ".pdf":
                 contents = unpack.from_file(path).get("content", "")
                 iterator = iter(re.split(f"({'|'.join(keywords)})", contents))
@@ -118,7 +119,9 @@ for root, dirs, files in os.walk(STATEMENTS_FOLDER):
                 )
 
                 # Write and read the files
-                if file_data:
+                if not file_data:
+                    print("no file data after parsing!")
+                else:
                     with open(output_filename, "w") as csv_file:
                         writer = csv.writer(csv_file)
                         writer.writerows(file_data)
